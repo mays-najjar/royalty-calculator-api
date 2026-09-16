@@ -94,7 +94,17 @@ php artisan test
 Routing, validation, the 404/422 paths and the sales fallback are covered by feature tests.
 The tier maths is covered by unit tests that run without touching the database.
 
-## Status
+## Notes on the implementation
 
-Work in progress: `App\Services\RoyaltyCalculator::calculate()` is not implemented yet, so
-the tier tests fail by design until it is written.
+Two details worth calling out, because both are easy to get wrong with money:
+
+- **`revenue * percentage / 100`, not `revenue * (percentage / 100)`.** `0.1` has no exact
+  binary representation, so dividing first makes `10000.0 * (10 / 100)` drift to
+  `1000.0000000000001`. Multiplying first keeps it exactly `1000.0`.
+- **`JSON_PRESERVE_ZERO_FRACTION`.** Without it, `json_encode` turns `1750.0` into `1750`,
+  so a money field changes JSON type depending on its value and clients parsing the
+  response break on the round numbers.
+
+If the configured tiers do not cover every unit sold, the uncovered units earn nothing.
+That is treated as a gap in the contract rules rather than a calculation error, and it is
+visible by comparing the units in the breakdown against the units sent in.
